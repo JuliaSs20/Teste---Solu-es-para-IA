@@ -4,17 +4,30 @@
  */
 
 class Car extends Phaser.Physics.Arcade.Sprite {
-    constructor(scene, x, y, texture, config = {}) {
-        super(scene, x, y, texture);
+    constructor(scene, x, y, texture, config = {}, isEnemy = false) {
+        // Se texture for null, usamos um placeholder interno
+        const textureKey = texture || (isEnemy ? 'enemy_car' : 'car');
+        super(scene, x, y, textureKey);
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        // Atributos de Performance (vêem dos upgrades da Garagem)
+        // Atributos de Performance
         this.speedMultiplier = 1 + (config.engine || 1) * 0.1;
         this.maxHP = 100 + (config.armor || 1) * 15;
         this.hp = this.maxHP;
         this.damage = 10 + (config.weapon || 1) * 5;
+
+        // DEBUG VISUAL: Se não houver textura, desenhar um retângulo direto no corpo
+        if (!scene.textures.exists(textureKey)) {
+            const color = isEnemy ? 0x00ffff : 0xff00ff;
+            const rect = scene.add.rectangle(0, 0, 40, 20, color);
+            rect.setStrokeStyle(2, 0xffffff);
+
+            // Transformar o Sprite em um "Container" visual
+            this.setAlpha(1);
+            this.setVisible(true);
+        }
 
         // Propriedades de Movimento
         this.maxSpeed = 300 * this.speedMultiplier;

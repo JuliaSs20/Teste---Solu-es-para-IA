@@ -37,22 +37,23 @@ class RaceScene extends Phaser.Scene {
         const startPoint = this.trackData.curve.getPoint(0);
         const startTangent = this.trackData.curve.getTangent(0);
 
-        // Criar Jogador - Forçar visibilidade com profundidade alta
-        this.player = new Car(this, startPoint.x, startPoint.y, 'car', this.playerUpgrades);
+        console.log("Posição de Partida:", startPoint.x, startPoint.y);
+
+        // Criar Jogador usando Retângulo Direto para garantir que apareça
+        this.player = new Car(this, startPoint.x, startPoint.y, null, this.playerUpgrades);
         this.player.setRotation(Math.atan2(startTangent.y, startTangent.x));
-        this.player.setDepth(100);
-        this.player.setVisible(true);
+        this.player.setDepth(1000);
 
         // 4. Inimigo
-        this.enemy = new Car(this, startPoint.x + 60, startPoint.y + 60, 'enemy_car', { engine: 1, armor: 1, weapon: 1 });
+        this.enemy = new Car(this, startPoint.x + 60, startPoint.y + 60, null, { engine: 1, armor: 1, weapon: 1 }, true);
         this.enemy.pathT = 0.01;
-        this.enemy.setDepth(90);
+        this.enemy.setDepth(900);
 
-        // 5. Configurar Câmera - Seguir jogador imediatamente
+        // 5. Configurar Câmera
         this.cameras.main.setBounds(0, 0, 4000, 4000);
-        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-        this.cameras.main.setZoom(1);
-        this.cameras.main.centerOn(this.player.x, this.player.y);
+        this.cameras.main.startFollow(this.player, true, 0.5, 0.5);
+        this.cameras.main.setZoom(0.8); // Zoom out para ver mais área
+        this.cameras.main.centerOn(startPoint.x, startPoint.y);
 
         // 6. Controles
         this.cursors = this.input.keyboard.createCursorKeys();
@@ -199,11 +200,15 @@ let game;
 
 // Funções de Interface vinculadas ao HTML
 window.gameStart = function () {
-    document.getElementById('main-menu').classList.add('hidden');
-    if (!game) {
-        game = new Phaser.Game(config);
-    } else {
-        game.scene.start('RaceScene', { upgrades: playerState.upgrades });
+    try {
+        document.getElementById('main-menu').classList.add('hidden');
+        if (!game) {
+            game = new Phaser.Game(config);
+        } else {
+            game.scene.start('RaceScene', { upgrades: playerState.upgrades });
+        }
+    } catch (e) {
+        alert("Erro ao iniciar jogo: " + e.message);
     }
 };
 
