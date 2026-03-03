@@ -23,10 +23,10 @@ class TrackGenerator {
             const angle = (i / this.pointCount) * Math.PI * 2;
             const randomRadius = radiusBasis * (0.6 + Math.random() * 0.4);
 
-            points.push(new Phaser.Math.Vector2(
-                center.x + Math.cos(angle) * randomRadius,
-                center.y + Math.sin(angle) * randomRadius
-            ));
+            const px = center.x + Math.cos(angle) * randomRadius;
+            const py = center.y + Math.sin(angle) * randomRadius;
+
+            points.push(new Phaser.Math.Vector2(px, py));
         }
 
         // 2. Criar a curva suavizada (CatmullRom) e fechar o loop

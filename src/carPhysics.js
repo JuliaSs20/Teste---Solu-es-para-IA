@@ -117,6 +117,7 @@ class Car extends Phaser.Physics.Arcade.Sprite {
 class Bullet extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y) {
         super(scene, x, y, 'bullet');
+        scene.add.existing(this);
     }
 
     fire(x, y, rotation, damage) {

@@ -9,42 +9,24 @@ class RaceScene extends Phaser.Scene {
     }
 
     init(data) {
-        this.playerUpgrades = data.upgrades || { engine: 1, armor: 1, weapon: 1 };
+        this.playerUpgrades = (data && data.upgrades) ? data.upgrades : { engine: 1, armor: 1, weapon: 1 };
         this.trackData = null;
         this.lapCount = 0;
         this.maxLaps = 3;
         this.isGameOver = false;
-
-        console.log("Iniciando corrida com upgrades:", this.playerUpgrades);
+        console.log("Scene Init - Upgrades:", this.playerUpgrades);
     }
 
     preload() {
-        // Assets simples (Sprites placeholder para garantir que o código rode se não houver assets reais)
-        const graphics = this.make.graphics();
-
-        // Carrinho
-        graphics.fillStyle(0x00ff00, 1);
-        graphics.fillRect(0, 0, 32, 16);
-        graphics.generateTexture('car', 32, 16);
-
-        // Inimigo
-        graphics.clear();
-        graphics.fillStyle(0xff0000, 1);
-        graphics.fillRect(0, 0, 32, 16);
-        graphics.generateTexture('enemy_car', 32, 16);
-
-        // Bala
-        graphics.clear();
-        graphics.fillStyle(0xffff00, 1);
-        graphics.fillRect(0, 0, 8, 4);
-        graphics.generateTexture('bullet', 8, 4);
-
-        graphics.destroy();
+        // Carregar fontes ou outros assets externos se necessário
+        // Vamos gerar os placeholders no create para garantir que o renderizador esteja pronto
     }
 
     create() {
+        this.generateSimpleTextures();
+
         // 1. Gerar Pista Procedural
-        const trackGen = new TrackGenerator(this, { width: 3000, height: 3000, pointCount: 12 });
+        const trackGen = new TrackGenerator(this, { width: 4000, height: 4000, pointCount: 15 });
         this.trackData = trackGen.generate();
 
         // 2. Visualizar Pista
@@ -54,19 +36,23 @@ class RaceScene extends Phaser.Scene {
         // 3. Criar Carros
         const startPoint = this.trackData.curve.getPoint(0);
         const startTangent = this.trackData.curve.getTangent(0);
-        const startAngle = Math.atan2(startPoint.y, startPoint.x);
 
+        // Criar Jogador - Forçar visibilidade com profundidade alta
         this.player = new Car(this, startPoint.x, startPoint.y, 'car', this.playerUpgrades);
         this.player.setRotation(Math.atan2(startTangent.y, startTangent.x));
+        this.player.setDepth(100);
+        this.player.setVisible(true);
 
-        // 4. Inimigo (IA Simples que segue a curva)
-        this.enemy = new Car(this, startPoint.x + 20, startPoint.y + 20, 'enemy_car', { engine: 1.5, armor: 1, weapon: 1 });
-        this.enemy.pathT = 0;
+        // 4. Inimigo
+        this.enemy = new Car(this, startPoint.x + 60, startPoint.y + 60, 'enemy_car', { engine: 1, armor: 1, weapon: 1 });
+        this.enemy.pathT = 0.01;
+        this.enemy.setDepth(90);
 
-        // 5. Configurar Câmera para seguir o jogador
-        this.cameras.main.setBounds(0, 0, 3000, 3000);
+        // 5. Configurar Câmera - Seguir jogador imediatamente
+        this.cameras.main.setBounds(0, 0, 4000, 4000);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-        this.cameras.main.setZoom(1.2);
+        this.cameras.main.setZoom(1);
+        this.cameras.main.centerOn(this.player.x, this.player.y);
 
         // 6. Controles
         this.cursors = this.input.keyboard.createCursorKeys();
@@ -84,13 +70,46 @@ class RaceScene extends Phaser.Scene {
 
         this.physics.add.collider(this.player, this.enemy);
 
-        // HUD via Phaser Text (Simples para visibilidade rápida)
-        this.hudText = this.add.text(20, 20, 'LAP: 0/3 | HP: 100/100', {
-            fontSize: '32px',
-            fill: '#ffffff',
+        // HUD Texto
+        this.hudText = this.add.text(20, 20, '', {
+            fontSize: '24px',
+            fontFamily: 'Orbitron',
+            fill: '#00ff00',
             stroke: '#000',
-            strokeThickness: 5
-        }).setScrollFactor(0);
+            strokeThickness: 4
+        }).setScrollFactor(0).setDepth(100);
+
+        console.log("Corrida iniciada! Jogador em:", startPoint.x, startPoint.y);
+    }
+
+    generateSimpleTextures() {
+        // Se a textura já existir, não criar de novo
+        if (this.textures.exists('car')) return;
+
+        let g = this.make.graphics();
+
+        // Jogador - ROSA NEON PARA TESTE (Impossível não ver)
+        g.fillStyle(0xff00ff);
+        g.fillRect(0, 0, 40, 20);
+        g.lineStyle(2, 0xffffff);
+        g.strokeRect(0, 0, 40, 20);
+        g.generateTexture('car', 40, 20);
+        g.clear();
+
+        // Inimigo - AZUL
+        g.fillStyle(0x00ffff);
+        g.fillRect(0, 0, 40, 20);
+        g.lineStyle(2, 0x000000);
+        g.strokeRect(0, 0, 40, 20);
+        g.generateTexture('enemy_car', 40, 20);
+        g.clear();
+
+        // Bala
+        g.fillStyle(0xffff00);
+        g.fillCircle(4, 4, 4);
+        g.generateTexture('bullet', 8, 8);
+        g.destroy();
+        console.log("Texturas Geradas com Sucesso!");
     }
 
     update(time, delta) {
