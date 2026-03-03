@@ -1,5 +1,5 @@
 /**
- * carPhysics.js - VERSÃO COM CONTROLES CORRIGIDOS
+ * carPhysics.js - VERSÃO FINAL ESTÁVEL
  */
 
 class Car extends Phaser.Physics.Arcade.Sprite {
@@ -8,113 +8,102 @@ class Car extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        // CORREÇÃO CRÍTICA: Definir o tamanho do corpo físico (já que não temos imagem/texture)
-        this.body.setSize(45, 25);
+        // Configuração Física
+        this.body.setSize(40, 20);
         this.body.setCollideWorldBounds(true);
 
         this.hp = 100;
-        this.maxSpeed = 400;
-        this.acceleration = 600;
-        this.isPlayer = isPlayer;
         this.baseColor = color;
-        this.hitTimer = 0;
+        this.isPlayer = isPlayer;
+        this.isDead = false;
 
-        // Criar o retângulo visual diretamente
-        this.rect = scene.add.rectangle(0, 0, 45, 25, color);
-        this.rect.setStrokeStyle(3, 0xffffff);
-        this.setDepth(1000);
+        // Visual do Carro
+        this.rect = scene.add.rectangle(0, 0, 40, 20, color);
+        this.rect.setStrokeStyle(2, 0xffffff);
+        this.setDepth(100);
 
-        this.bullets = scene.physics.add.group({ classType: Bullet, maxSize: 5 });
+        // Sistema de Tiro
+        this.bullets = scene.physics.add.group({
+            classType: Bullet,
+            maxSize: 10,
+            runChildUpdate: true
+        });
         this.lastFired = 0;
     }
 
     update(time, delta, input) {
-        if (this.isPlayer && input) {
-            // ... (controles existentes)
-            if (input.left.isDown || input.a.isDown) this.angle -= 5;
-            else if (input.right.isDown || input.d.isDown) this.angle += 5;
+        if (this.isDead) return;
 
+        if (this.isPlayer && input) {
+            // Rotação
+            if (input.left.isDown || input.a.isDown) {
+                this.angle -= 4;
+            } else if (input.right.isDown || input.d.isDown) {
+                this.angle += 4;
+            }
+
+            // Movimento
             if (input.up.isDown || input.w.isDown) {
                 const angleRad = Phaser.Math.DegToRad(this.angle);
-                this.body.velocity.x += Math.cos(angleRad) * this.acceleration * delta / 1000;
-                this.body.velocity.y += Math.sin(angleRad) * this.acceleration * delta / 1000;
-            } else if (input.down.isDown || input.s.isDown) {
-                const angleRad = Phaser.Math.DegToRad(this.angle);
-                this.body.velocity.x -= Math.cos(angleRad) * (this.acceleration / 2) * delta / 1000;
-                this.body.velocity.y -= Math.sin(angleRad) * (this.acceleration / 2) * delta / 1000;
+                this.body.velocity.x += Math.cos(angleRad) * 15;
+                this.body.velocity.y += Math.sin(angleRad) * 15;
             } else {
-                this.body.velocity.scale(0.95);
+                this.body.velocity.scale(0.95); // Drag suave
             }
 
+            // Atirar
             if (input.space.isDown && time > this.lastFired) {
                 this.fire();
-                this.lastFired = time + 250;
+                this.lastFired = time + 300;
             }
         }
 
-        const curVel = new Phaser.Math.Vector2(this.body.velocity.x, this.body.velocity.y);
-        if (curVel.length() > this.maxSpeed) {
-            curVel.setLength(this.maxSpeed);
-            this.body.setVelocity(curVel.x, curVel.y);
+        // Limitar velocidade
+        const speed = Math.sqrt(this.body.velocity.x ** 2 + this.body.velocity.y ** 2);
+        if (speed > 400) {
+            this.body.velocity.scale(400 / speed);
         }
 
+        // Sincronizar Retângulo Visual
         this.rect.setPosition(this.x, this.y);
         this.rect.setRotation(this.rotation);
-
-        // Feedback visual de dano (piscar branco)
-        if (this.hitTimer > 0) {
-            this.hitTimer -= delta;
-            this.rect.setFillStyle(0xffffff);
-        } else {
-            this.rect.setFillStyle(this.baseColor);
-        }
     }
 
     takeDamage(amount) {
-        if (this.isRespawning) return;
-
+        if (this.isDead) return;
         this.hp -= amount;
-        this.hitTimer = 100; // Piscar por 100ms
 
-        console.log(`${this.isPlayer ? 'Player' : 'Inimigo'} HP: ${this.hp}`);
+        // Piscar branco ao levar dano
+        this.rect.setFillStyle(0xffffff);
+        this.scene.time.delayedCall(50, () => {
+            this.rect.setFillStyle(this.baseColor);
+        });
 
         if (this.hp <= 0) {
-            this.die();
+            this.explode();
         }
     }
 
-    die() {
-        this.isRespawning = true;
+    explode() {
+        this.isDead = true;
         this.setVisible(false);
         this.rect.setVisible(false);
-        this.body.enable = false;
+        this.body.setVelocity(0, 0);
 
-        // Efeito de explosão simples
-        const particles = this.scene.add.particles(this.x, this.y, null, {
-            speed: { min: -100, max: 100 },
-            angle: { min: 0, max: 360 },
-            scale: { start: 1, end: 0 },
-            blendMode: 'ADD',
-            lifespan: 500,
-            quantity: 20
-        });
-
-        this.scene.time.delayedCall(3000, () => {
+        // Respawn após 2 segundos
+        this.scene.time.delayedCall(2000, () => {
             this.hp = 100;
-            this.isRespawning = false;
+            this.isDead = false;
             this.setVisible(true);
             this.rect.setVisible(true);
-            this.body.enable = true;
-            this.setPosition(this.isPlayer ? 1000 : 1200, 1000);
-            particles.destroy();
+            this.setPosition(this.isPlayer ? 400 : 600, 300);
         });
     }
 
     fire() {
         const bullet = this.bullets.get(this.x, this.y);
         if (bullet) {
-            const rot = Phaser.Math.DegToRad(this.angle);
-            bullet.fire(this.x, this.y, rot);
+            bullet.fire(this.x, this.y, Phaser.Math.DegToRad(this.angle));
         }
     }
 }
@@ -123,23 +112,23 @@ class Bullet extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y) {
         super(scene, x, y);
         scene.physics.add.existing(this);
-        this.rect = scene.add.rectangle(0, 0, 10, 5, 0xffff00);
-        this.rect.setDepth(999);
+        this.rect = scene.add.rectangle(0, 0, 8, 4, 0xffff00);
     }
-    fire(x, y, rot) {
+
+    fire(x, y, rotation) {
         this.body.reset(x, y);
         this.setActive(true).setVisible(true);
         this.rect.setVisible(true);
-        const speed = 1000;
-        this.body.setVelocity(Math.cos(rot) * speed, Math.sin(rot) * speed);
-        this.rotation = rot;
-        this.scene.time.delayedCall(1000, () => this.destroyBullet());
+        this.rotation = rotation;
+        this.body.velocity.x = Math.cos(rotation) * 800;
+        this.body.velocity.y = Math.sin(rotation) * 800;
+
+        this.scene.time.delayedCall(1000, () => {
+            this.setActive(false).setVisible(false);
+            this.rect.setVisible(false);
+        });
     }
-    destroyBullet() {
-        this.setActive(false).setVisible(false);
-        this.rect.setVisible(false);
-        this.body.stop();
-    }
+
     preUpdate() {
         this.rect.setPosition(this.x, this.y);
         this.rect.setRotation(this.rotation);
