@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corrida 2D - Combate Veicular</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Phaser 3 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+</head>
+
+<body>
+    <div id="game-container"></div>
+
+    <!-- UI Overlay for Menus -->
+    <div id="ui-layer">
+        <div id="main-menu" class="overlay">
+            <h1>RACING COMBAT</h1>
+            <button id="btn-start" onclick="window.gameStart()">Iniciar Corrida</button>
+            <button id="btn-garage" onclick="window.openGarage()">Garagem</button>
+        </div>
+
+        <div id="garage-menu" class="overlay hidden">
+            <h1>GARAGEM</h1>
+            <div id="player-stats">Dinheiro: $<span id="money-display">0</span></div>
+            <div class="upgrade-list">
+                <div class="upgrade-item">
+                    <span>Motor (Velocidade)</span>
+                    <button id="buy-engine" onclick="window.buyUpgrade('engine')">Comprar ($100)</button>
+                </div>
+                <div class="upgrade-item">
+                    <span>Blindagem (HP)</span>
+                    <button id="buy-armor" onclick="window.buyUpgrade('armor')">Comprar ($100)</button>
+                </div>
+                <div class="upgrade-item">
+                    <span>Armamento (Dano)</span>
+                    <button id="buy-weapon" onclick="window.buyUpgrade('weapon')">Comprar ($100)</button>
+                </div>
+            </div>
+            <button id="btn-back-menu" onclick="window.closeGarage()">Voltar ao Menu</button>
+        </div>
+
+        <div id="result-screen" class="overlay hidden">
+            <h1 id="result-title">RESULTADO</h1>
+            <p id="result-money">Prêmio: $0</p>
+            <button onclick="window.closeResults()">Ir para Garagem</button>
+        </div>
+    </div>
+
+    <!-- Modulos do Jogo -->
+    <script src="src/garage.js"></script>
+    <script src="src/trackGen.js"></script>
+    <script src="src/carPhysics.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>
