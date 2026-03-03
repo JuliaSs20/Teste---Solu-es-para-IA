@@ -14,8 +14,10 @@ class Car extends Phaser.Physics.Arcade.Sprite {
 
         this.hp = 100;
         this.maxSpeed = 400;
-        this.acceleration = 600; // Aumentado para resposta rápida
+        this.acceleration = 600;
         this.isPlayer = isPlayer;
+        this.baseColor = color;
+        this.hitTimer = 0;
 
         // Criar o retângulo visual diretamente
         this.rect = scene.add.rectangle(0, 0, 45, 25, color);
@@ -28,14 +30,10 @@ class Car extends Phaser.Physics.Arcade.Sprite {
 
     update(time, delta, input) {
         if (this.isPlayer && input) {
-            // Rotação (Esquerda/Direita)
-            if (input.left.isDown || input.a.isDown) {
-                this.angle -= 5;
-            } else if (input.right.isDown || input.d.isDown) {
-                this.angle += 5;
-            }
+            // ... (controles existentes)
+            if (input.left.isDown || input.a.isDown) this.angle -= 5;
+            else if (input.right.isDown || input.d.isDown) this.angle += 5;
 
-            // Aceleração (Cima/Baixo ou W/S)
             if (input.up.isDown || input.w.isDown) {
                 const angleRad = Phaser.Math.DegToRad(this.angle);
                 this.body.velocity.x += Math.cos(angleRad) * this.acceleration * delta / 1000;
@@ -45,27 +43,71 @@ class Car extends Phaser.Physics.Arcade.Sprite {
                 this.body.velocity.x -= Math.cos(angleRad) * (this.acceleration / 2) * delta / 1000;
                 this.body.velocity.y -= Math.sin(angleRad) * (this.acceleration / 2) * delta / 1000;
             } else {
-                // Atrito (Drag) - Parar o carro se nada for apertado
                 this.body.velocity.scale(0.95);
             }
 
-            // Tiro (Espaço)
             if (input.space.isDown && time > this.lastFired) {
                 this.fire();
                 this.lastFired = time + 250;
             }
         }
 
-        // Limitar velocidade máxima
         const curVel = new Phaser.Math.Vector2(this.body.velocity.x, this.body.velocity.y);
         if (curVel.length() > this.maxSpeed) {
             curVel.setLength(this.maxSpeed);
             this.body.setVelocity(curVel.x, curVel.y);
         }
 
-        // Sincronizar visual (Retângulo segue o corpo físico)
         this.rect.setPosition(this.x, this.y);
         this.rect.setRotation(this.rotation);
+
+        // Feedback visual de dano (piscar branco)
+        if (this.hitTimer > 0) {
+            this.hitTimer -= delta;
+            this.rect.setFillStyle(0xffffff);
+        } else {
+            this.rect.setFillStyle(this.baseColor);
+        }
+    }
+
+    takeDamage(amount) {
+        if (this.isRespawning) return;
+
+        this.hp -= amount;
+        this.hitTimer = 100; // Piscar por 100ms
+
+        console.log(`${this.isPlayer ? 'Player' : 'Inimigo'} HP: ${this.hp}`);
+
+        if (this.hp <= 0) {
+            this.die();
+        }
+    }
+
+    die() {
+        this.isRespawning = true;
+        this.setVisible(false);
+        this.rect.setVisible(false);
+        this.body.enable = false;
+
+        // Efeito de explosão simples
+        const particles = this.scene.add.particles(this.x, this.y, null, {
+            speed: { min: -100, max: 100 },
+            angle: { min: 0, max: 360 },
+            scale: { start: 1, end: 0 },
+            blendMode: 'ADD',
+            lifespan: 500,
+            quantity: 20
+        });
+
+        this.scene.time.delayedCall(3000, () => {
+            this.hp = 100;
+            this.isRespawning = false;
+            this.setVisible(true);
+            this.rect.setVisible(true);
+            this.body.enable = true;
+            this.setPosition(this.isPlayer ? 1000 : 1200, 1000);
+            particles.destroy();
+        });
     }
 
     fire() {
@@ -90,10 +132,13 @@ class Bullet extends Phaser.Physics.Arcade.Sprite {
         this.rect.setVisible(true);
         const speed = 1000;
         this.body.setVelocity(Math.cos(rot) * speed, Math.sin(rot) * speed);
-        this.scene.time.delayedCall(1000, () => {
-            this.setActive(false).setVisible(false);
-            this.rect.setVisible(false);
-        });
+        this.rotation = rot;
+        this.scene.time.delayedCall(1000, () => this.destroyBullet());
+    }
+    destroyBullet() {
+        this.setActive(false).setVisible(false);
+        this.rect.setVisible(false);
+        this.body.stop();
     }
     preUpdate() {
         this.rect.setPosition(this.x, this.y);

@@ -46,6 +46,21 @@ class RaceScene extends Phaser.Scene {
             padding: 10
         }).setScrollFactor(0).setDepth(2000);
 
+        // 7. Colisões e Combate
+        this.physics.add.collider(this.player, this.enemy);
+
+        // Player atira no Inimigo
+        this.physics.add.overlap(this.player.bullets, this.enemy, (enemy, bullet) => {
+            enemy.takeDamage(20);
+            bullet.destroyBullet(); // Função customizada para limpar rastro
+        });
+
+        // Inimigo atira no Player
+        this.physics.add.overlap(this.enemy.bullets, this.player, (player, bullet) => {
+            player.takeDamage(10);
+            bullet.destroyBullet();
+        });
+
         // Forçar foco no jogo
         this.input.keyboard.enabled = true;
     }
@@ -53,10 +68,24 @@ class RaceScene extends Phaser.Scene {
     update(time, delta) {
         this.player.update(time, delta, this.inputManager);
 
-        // IA Simples
-        this.enemy.angle += 0.5;
-        const rot = Phaser.Math.DegToRad(this.enemy.angle);
-        this.enemy.body.setVelocity(Math.cos(rot) * 150, Math.sin(rot) * 150);
+        // IA Melhorada: Segue o Player se estiver longe, atira se estiver perto
+        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.enemy.x, this.enemy.y);
+
+        if (dist > 300) {
+            // Persegue
+            const angleToPlayer = Phaser.Math.Angle.Between(this.enemy.x, this.enemy.y, this.player.x, this.player.y);
+            this.enemy.rotation = Phaser.Math.Angle.RotateTo(this.enemy.rotation, angleToPlayer, 0.05);
+            this.enemy.body.velocity.x = Math.cos(this.enemy.rotation) * 150;
+            this.enemy.body.velocity.y = Math.sin(this.enemy.rotation) * 150;
+        } else {
+            // Atira
+            this.enemy.body.velocity.scale(0.9);
+            if (time > this.enemy.lastFired) {
+                this.enemy.fire();
+                this.enemy.lastFired = time + 1000;
+            }
+        }
+
         this.enemy.update(time, delta, null);
     }
 }
